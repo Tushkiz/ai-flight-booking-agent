@@ -7,15 +7,18 @@ import { memo, useState } from "react";
 
 import type { Vote } from "@/lib/db/schema";
 
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import equal from "fast-deep-equal";
 import { AirportSuggestions } from "./flight-airport-suggestions";
+import FlightBookingConfirmation from "./flight-booking-confirmation";
+import { FlightsDetails } from "./flight-details";
 import { FlightsOptionsList } from "./flight-options-list";
 import { PencilEditIcon, SparklesIcon } from "./icons";
 import { Markdown } from "./markdown";
 import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { PreviewAttachment } from "./preview-attachment";
+import ToolCallLoading from "./tool-call-loading";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Weather } from "./weather";
@@ -132,7 +135,6 @@ const PurePreviewMessage = ({
 
                   if (state === "result") {
                     const { result } = toolInvocation;
-                    console.log(result);
 
                     return (
                       <div key={toolCallId}>
@@ -143,10 +145,41 @@ const PurePreviewMessage = ({
                             result={result}
                             onChange={(airportId) => {
                               console.log(airportId);
+
+                              setMessages((prevMessages) => {
+                                const newMessages = [...prevMessages];
+                                newMessages.push({
+                                  content: `I will select ${airportId} airport.`,
+                                  id: generateUUID(),
+                                  role: "user",
+                                });
+
+                                return newMessages;
+                              });
+                              reload();
                             }}
                           />
                         ) : toolName === "searchOneWayFlights" ? (
                           <FlightsOptionsList
+                            result={result}
+                            onChange={(flight) => {
+                              setMessages((prevMessages) => {
+                                const newMessages = [...prevMessages];
+                                newMessages.push({
+                                  content: `I will go with the flight ${flight.flightNumber}.`,
+                                  id: generateUUID(),
+                                  role: "user",
+                                });
+
+                                return newMessages;
+                              });
+                              reload();
+                            }}
+                          />
+                        ) : toolName === "confirmBooking" ? (
+                          <FlightBookingConfirmation result={result} />
+                        ) : toolName === "getFlightDetails" ? (
+                          <FlightsDetails
                             result={result}
                             onChange={(flightId) => {
                               console.log(flightId);
@@ -171,9 +204,13 @@ const PurePreviewMessage = ({
                       {toolName === "getWeather" ? (
                         <Weather />
                       ) : toolName === "getAirportSuggestions" ? (
-                        <AirportSuggestions />
+                        <ToolCallLoading message="Getting airport suggestions" />
                       ) : toolName === "searchOneWayFlights" ? (
-                        <FlightsOptionsList />
+                        <ToolCallLoading message="Searching flights" />
+                      ) : toolName === "getFlightDetails" ? (
+                        <ToolCallLoading message="Getting flight details" />
+                      ) : toolName === "confirmBooking" ? (
+                        <ToolCallLoading message="Confirming booking" />
                       ) : null}
                     </div>
                   );

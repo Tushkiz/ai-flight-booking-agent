@@ -345,7 +345,11 @@ export function AirportSuggestions({
       {result && result.data.searchItems.length > 0 ? (
         <RadioGroup className="flex flex-col gap-2" onValueChange={onChange}>
           {result.data.searchItems.map((item) => (
-            <Label htmlFor={item.id} key={item.id} className="cursor-pointer">
+            <Label
+              htmlFor={item.id}
+              key={Math.random()}
+              className="cursor-pointer"
+            >
               <div className="flex items-center space-x-2 border rounded-md p-3">
                 <RadioGroupItem value={item.id} id={item.id} />
                 <p>{item.displayLine1}</p>

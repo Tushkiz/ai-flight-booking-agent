@@ -36,7 +36,8 @@ type AllowedTools =
   | "searchOneWayFlights"
   | "searchRoundTripFlights"
   | "getFlightDetails"
-  | "getFlightUpsells";
+  | "getFlightUpsells"
+  | "confirmBooking";
 
 const flightTools: AllowedTools[] = [
   "getAirportSuggestions",
@@ -44,6 +45,7 @@ const flightTools: AllowedTools[] = [
   "searchRoundTripFlights",
   "getFlightDetails",
   "getFlightUpsells",
+  "confirmBooking",
 ];
 
 const weatherTools: AllowedTools[] = ["getWeather"];
@@ -132,6 +134,7 @@ export async function POST(request: Request) {
 
       const result = streamText({
         model: customModel(model.apiIdentifier),
+        maxTokens: 2000,
         system: systemPrompt,
         messages: coreMessages,
         maxSteps: 10,
@@ -242,6 +245,43 @@ export async function POST(request: Request) {
                 rapidApiOptions
               );
               return await response.json();
+            },
+          },
+          confirmBooking: {
+            description: "Confirm a flight booking with passenger details",
+            parameters: z.object({
+              flightNumber: z.string(),
+              flightId: z.string(),
+              passengerName: z.string(),
+              passengerEmail: z.string(),
+              passengerPhone: z.string(),
+            }),
+            execute: async ({
+              flightNumber,
+              flightId,
+              passengerName,
+              passengerEmail,
+              passengerPhone,
+            }) => {
+              console.log("🛠️ EXECUTING confirmBooking");
+              const response = await fetch(
+                "https://api.npoint.io/da8437240100715f1d41",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    flightNumber,
+                    flightId,
+                    passengerName,
+                    passengerEmail,
+                    passengerPhone,
+                  }),
+                }
+              );
+              const bookingConfirmation = await response.json();
+              return bookingConfirmation;
             },
           },
         },

@@ -1893,7 +1893,7 @@ export function FlightsOptionsList({
   onChange,
 }: {
   result?: minimalFlightsOptions[];
-  onChange?: (id: string) => void;
+  onChange?: (flight: minimalFlightsOptions) => void;
 }) {
   const [displayCount, setDisplayCount] = useState(10);
 
@@ -1908,7 +1908,15 @@ export function FlightsOptionsList({
     >
       {result && result.length > 0 ? (
         <>
-          <RadioGroup className="flex flex-col gap-3" onValueChange={onChange}>
+          <RadioGroup
+            className="flex flex-col gap-3"
+            onValueChange={(id) => {
+              const flight = result.find((f) => f.id === id);
+              if (flight) {
+                onChange?.(flight);
+              }
+            }}
+          >
             {displayedResults.map((item) => (
               <Label htmlFor={item.id} key={item.id} className="cursor-pointer">
                 <div className="flex items-center justify-between border rounded-lg p-4 hover:bg-slate-50 hover:text-black transition-colors">
