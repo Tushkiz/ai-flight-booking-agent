@@ -262,7 +262,8 @@ export function FlightsOptionsList({
 }) {
   const [displayCount, setDisplayCount] = useState(10);
 
-  const displayedResults = result?.slice(0, displayCount);
+  const displayedResults =
+    result && Array.isArray(result) ? result?.slice(0, displayCount) : [];
   const hasMore = result && result?.length > displayCount;
 
   return (

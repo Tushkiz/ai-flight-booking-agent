@@ -96,7 +96,7 @@ export function AirportSuggestions({
         "flex flex-col gap-4 rounded-2xl p-4 skeleton-bg max-w-[500px]"
       )}
     >
-      {result && result.data.searchItems.length > 0 ? (
+      {result && result.data && result.data.searchItems.length > 0 ? (
         <RadioGroup className="flex flex-col gap-2" onValueChange={onChange}>
           {result.data.searchItems.map((item) => (
             <Label

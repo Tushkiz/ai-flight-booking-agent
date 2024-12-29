@@ -88,8 +88,11 @@ export async function POST(request: Request) {
     id,
     messages,
     modelId,
-  }: { id: string; messages: Array<Message>; modelId: string } =
-    await request.json();
+  }: {
+    id: string;
+    messages: Array<Message>;
+    modelId: string;
+  } = await request.json();
 
   const session = await auth();
 
@@ -98,6 +101,15 @@ export async function POST(request: Request) {
   }
 
   const model = models.find((model) => model.id === modelId);
+  let provider: "openai" | "anthropic" | "x" = "openai";
+
+  if (model?.id.startsWith("gpt")) {
+    provider = "openai";
+  } else if (model?.id.startsWith("claude")) {
+    provider = "anthropic";
+  } else if (model?.id.startsWith("grok")) {
+    provider = "x";
+  }
 
   if (!model) {
     return new Response("Model not found", { status: 404 });
@@ -133,7 +145,7 @@ export async function POST(request: Request) {
       });
 
       const result = streamText({
-        model: customModel(model.apiIdentifier),
+        model: customModel(model.apiIdentifier, provider),
         maxTokens: 2000,
         system: systemPrompt,
         messages: coreMessages,
