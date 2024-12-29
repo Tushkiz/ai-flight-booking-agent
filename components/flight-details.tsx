@@ -101,13 +101,7 @@ export type FlightInformation = {
   message: string;
 };
 
-export function FlightsDetails({
-  result,
-  onChange,
-}: {
-  result: FlightInformation;
-  onChange?: (id: string) => void;
-}) {
+export function FlightsDetails({ result }: { result: FlightInformation }) {
   const { data } = result;
   const { airline, slices, price } = data;
   const totalPrice = price.find((p) => p.type === "TOTAL_PRICE");
@@ -159,7 +153,8 @@ export function FlightsDetails({
                   </div>
                   <div className="flex-1 text-center">
                     <div className="text-sm text-gray-600">
-                      {(parseInt(segment.durationInMinutes) / 60).toFixed(2)} hours
+                      {(parseInt(segment.durationInMinutes) / 60).toFixed(2)}{" "}
+                      hours
                     </div>
                     <div className="relative w-full h-[2px] bg-gray-300 my-2">
                       <div className="absolute -top-2 left-1/2 -translate-x-1/2">

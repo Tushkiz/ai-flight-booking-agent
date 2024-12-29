@@ -73,6 +73,8 @@ export interface BookingComFlightDetails {
     amenities: Amenity[]
     departureTerminal: string
     arrivalTerminal: string
+    mealService: boolean
+    entertainment: boolean
   }
   
   export interface DepartureAirport2 {

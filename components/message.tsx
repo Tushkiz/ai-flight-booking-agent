@@ -9,10 +9,10 @@ import type { Vote } from "@/lib/db/schema";
 
 import { cn, generateUUID } from "@/lib/utils";
 import equal from "fast-deep-equal";
-import { AirportSuggestions } from "./flight-airport-suggestions";
-import FlightBookingConfirmation from "./flight-booking-confirmation";
-import { FlightsDetails } from "./flight-details";
-import { FlightsOptionsList } from "./flight-options-list";
+import { BookingDotComAirportList } from "./booking-cards/airport-suggestions";
+import FlightBookingConfirmation from "./booking-cards/booking-confirmation";
+import { BookingDotComFlightDetails } from "./booking-cards/flight-details";
+import { BookingDotComFlightsList } from "./booking-cards/flights-list";
 import { PencilEditIcon, SparklesIcon } from "./icons";
 import { Markdown } from "./markdown";
 import { MessageActions } from "./message-actions";
@@ -126,103 +126,82 @@ const PurePreviewMessage = ({
                 {message.toolInvocations.map((toolInvocation) => {
                   const { toolName, toolCallId, state, args } = toolInvocation;
 
-                  if (state === "result") {
-                    const { result } = toolInvocation;
-
-                    return (
-                      <div key={toolCallId}>
-                        {toolName === "getWeather" ? (
-                          <Weather weatherAtLocation={result} />
-                        ) : toolName === "getAirportSuggestions" ? (
-                          <AirportSuggestions
-                            result={result}
-                            onChange={(airportId) => {
-                              console.log(airportId);
-
-                              setMessages((prevMessages) => {
-                                const newMessages = [...prevMessages];
-                                newMessages.push({
-                                  content: `I will select ${airportId} airport.`,
-                                  id: generateUUID(),
-                                  role: "user",
-                                });
-
-                                return newMessages;
-                              });
-                              reload();
-                            }}
-                          />
-                        ) : toolName === "searchOneWayFlights" ? (
-                          <FlightsOptionsList
-                            result={result}
-                            onChange={(flight) => {
-                              setMessages((prevMessages) => {
-                                const newMessages = [...prevMessages];
-                                newMessages.push({
-                                  content: `I will go with the flight ${flight.flightNumber}.`,
-                                  id: generateUUID(),
-                                  role: "user",
-                                });
-
-                                return newMessages;
-                              });
-                              reload();
-                            }}
-                          />
-                        ) : toolName === "searchRoundTripFlights" ? (
-                          <FlightsOptionsList
-                            result={result}
-                            onChange={(flight) => {
-                              setMessages((prevMessages) => {
-                                const newMessages = [...prevMessages];
-                                newMessages.push({
-                                  content: `I will go with the flight ${flight.flightNumber}.`,
-                                  id: generateUUID(),
-                                  role: "user",
-                                });
-
-                                return newMessages;
-                              });
-                              reload();
-                            }}
-                          />
-                        ) : toolName === "confirmBooking" ? (
-                          <FlightBookingConfirmation result={result} />
-                        ) : toolName === "getFlightDetails" ? (
-                          <FlightsDetails
-                            result={result}
-                            onChange={(flightId) => {
-                              console.log(flightId);
-                            }}
-                          />
-                        ) : (
-                          <pre>{JSON.stringify(result, null, 2)}</pre>
-                        )}
-                      </div>
-                    );
+                  switch (state) {
+                    case "result":
+                      const { result } = toolInvocation;
+                      return (
+                        <div key={toolCallId}>
+                          {(() => {
+                            switch (toolName) {
+                              case "getWeather":
+                                return <Weather weatherAtLocation={result} />;
+                              case "searchAirports":
+                                return (
+                                  <BookingDotComAirportList
+                                    airports={result}
+                                    onChange={(airportId) => {
+                                      setMessages((prevMessages) => {
+                                        const newMessages = [...prevMessages];
+                                        newMessages.push({
+                                          content: `I will select ${airportId} airport.`,
+                                          id: generateUUID(),
+                                          role: "user",
+                                        });
+                                        return newMessages;
+                                      });
+                                      reload();
+                                    }}
+                                  />
+                                );
+                              case "searchFlights":
+                                return (
+                                  <BookingDotComFlightsList
+                                    result={result}
+                                    onChange={(flight) => {
+                                      setMessages((prevMessages) => {
+                                        const newMessages = [...prevMessages];
+                                        newMessages.push({
+                                          content: `I think I will select ${flight}. show me the details.`,
+                                          id: generateUUID(),
+                                          role: "user",
+                                        });
+                                        return newMessages;
+                                      });
+                                      reload();
+                                    }}
+                                  />
+                                );
+                              case "getFlightDetails":
+                                return (
+                                  <BookingDotComFlightDetails result={result} />
+                                );
+                              case "confirmBooking":
+                                return (
+                                  <FlightBookingConfirmation result={result} />
+                                );
+                              default:
+                                return (
+                                  <pre>{JSON.stringify(result, null, 2)}</pre>
+                                );
+                            }
+                          })()}
+                        </div>
+                      );
+                    default:
+                      return (
+                        <div key={toolCallId}>
+                          {toolName === "searchAirports" ? (
+                            <ToolCallLoading message="✈️  Getting airport suggestions" />
+                          ) : toolName === "searchFlights" ? (
+                            <ToolCallLoading message="🔎 Searching flights" />
+                          ) : toolName === "getFlightDetails" ? (
+                            <ToolCallLoading message="📋 Getting flight details" />
+                          ) : toolName === "confirmBooking" ? (
+                            <ToolCallLoading message="✅ Confirming booking" />
+                          ) : null}
+                        </div>
+                      );
                   }
-                  return (
-                    <div
-                      key={toolCallId}
-                      className={cx({
-                        skeleton: ["getWeather"].includes(toolName),
-                      })}
-                    >
-                      {toolName === "getWeather" ? (
-                        <Weather />
-                      ) : toolName === "getAirportSuggestions" ? (
-                        <ToolCallLoading message="✈️  Getting airport suggestions" />
-                      ) : toolName === "searchOneWayFlights" ? (
-                        <ToolCallLoading message="🔎 Searching one-way flights" />
-                      ) : toolName === "searchRoundTripFlights" ? (
-                        <ToolCallLoading message="🔄 Searching round-trip flights" />
-                      ) : toolName === "getFlightDetails" ? (
-                        <ToolCallLoading message="📋 Getting flight details" />
-                      ) : toolName === "confirmBooking" ? (
-                        <ToolCallLoading message="✅ Confirming booking" />
-                      ) : null}
-                    </div>
-                  );
                 })}
               </div>
             )}

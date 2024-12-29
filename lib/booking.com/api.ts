@@ -14,13 +14,14 @@ interface FlightSearchParams {
   toCountry: string;
   depart: string;
   return?: string;
-  sort: string;
+  sort: "CHEAPEST" | "FASTEST" | "BEST";
   enableVI: number;
   stops?: number;
   depTimeInt?: string;
   arrTimeInt?: string;
   duration?: number;
   page?: number;
+  limit?: number;
 }
 
 interface FlightDetailsParams {
@@ -75,6 +76,7 @@ class BookingAPIClient {
       ...(params.arrTimeInt && { arrTimeInt: params.arrTimeInt }),
       ...(params.duration && { duration: params.duration.toString() }),
       ...(params.page !== undefined && { page: params.page.toString() }),
+      ...(params.limit !== undefined && { limit: params.limit.toString() }),
     });
 
     const response = await fetch(
@@ -132,4 +134,4 @@ class BookingAPIClient {
   }
 }
 
-const api = BookingAPIClient.getInstance();
+export const bookingClient = BookingAPIClient.getInstance();

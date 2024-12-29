@@ -21,68 +21,26 @@ import {
 } from "ai";
 import { z } from "zod";
 
-import {
-  FlightsOptions,
-  minimalFlightsOptions,
-} from "@/components/flight-options-list";
-import { logger } from "@/lib/logging/maxim";
-import { ChatCompletionResult } from "@maximai/maxim-js";
+import { bookingClient } from "@/lib/booking.com/api";
+import { mail } from "@/lib/resend/mail";
 import { generateTitleFromUserMessage } from "../../actions";
 
 export const maxDuration = 60;
 
 type AllowedTools =
-  | "getWeather"
-  | "getAirportSuggestions"
-  | "searchOneWayFlights"
-  | "searchRoundTripFlights"
+  | "searchAirports"
+  | "searchFlights"
   | "getFlightDetails"
-  | "getFlightUpsells"
   | "confirmBooking";
 
 const flightTools: AllowedTools[] = [
-  "getAirportSuggestions",
-  "searchOneWayFlights",
-  "searchRoundTripFlights",
+  "searchAirports",
+  "searchFlights",
   "getFlightDetails",
-  "getFlightUpsells",
   "confirmBooking",
 ];
 
-const weatherTools: AllowedTools[] = ["getWeather"];
-
-const allTools: AllowedTools[] = [...flightTools, ...weatherTools];
-
-const rapidApiHeaders = {
-  "X-RapidAPI-Key": process.env.RAPIDAPI_KEY as string,
-  "X-RapidAPI-Host": process.env.RAPIDAPI_HOST as string,
-};
-
-const rapidApiOptions = {
-  headers: {
-    ...rapidApiHeaders,
-  },
-};
-
-const rapidApiBaseUrl = process.env.RAPIDAPI_BASE_URL as string;
-
-function truncateFlightDetails(data: FlightsOptions): minimalFlightsOptions[] {
-  return data.data.listings.map((listing) => ({
-    id: listing.id,
-    airline: {
-      name: listing.airlines[0].name,
-      logo: listing.airlines[0].image,
-    },
-    price: listing.totalPriceWithDecimal.price,
-    arrivalInfo: listing.slices[0].segments[0].arrivalInfo,
-    departInfo: listing.slices[0].segments[0].departInfo,
-    duration: listing.slices[0].segments[0].duration,
-    flightNumber: listing.slices[0].segments[0].flightNumber,
-    itemKey: listing.itemKey,
-    priceKey: listing.priceKey,
-    stopQuantity: listing.slices[0].segments[0].stopQuantity,
-  }));
-}
+const allTools: AllowedTools[] = [...flightTools];
 
 export async function POST(request: Request) {
   const {
@@ -100,15 +58,6 @@ export async function POST(request: Request) {
   if (!session || !session.user || !session.user.id) {
     return new Response("Unauthorized", { status: 401 });
   }
-
-  const loggerSession = logger.session({
-    id: id,
-    name: `Flight booking session for ${session.user.name}(${session.user.id})`,
-    tags: {
-      "user-id": session.user.id,
-      "user-email": session.user.email!,
-    },
-  });
 
   const model = models.find((model) => model.id === modelId);
   let provider: "openai" | "anthropic" | "x" = "openai";
@@ -140,12 +89,6 @@ export async function POST(request: Request) {
   }
 
   const userMessageId = generateUUID();
-  const trace = loggerSession.trace({
-    id: userMessageId,
-    sessionId: loggerSession.id,
-  });
-
-  trace.input(userMessage.content as string);
 
   await saveMessages({
     messages: [
@@ -168,208 +111,70 @@ export async function POST(request: Request) {
         maxSteps: 10,
         experimental_activeTools: allTools,
         tools: {
-          getWeather: {
-            description: "Get the current weather at a location",
-            parameters: z.object({
-              latitude: z.number(),
-              longitude: z.number(),
-            }),
-            execute: async ({ latitude, longitude }) => {
-              const span = trace.span({
-                id: `tool-${generateUUID()}`,
-              });
-              const retrieval = span.retrieval({
-                id: generateUUID(),
-                name: "Tool call - Weather data",
-              });
-
-              retrieval.input(JSON.stringify({ latitude, longitude }));
-              span.event(generateUUID(), "Weather data requested");
-
-              const response = await fetch(
-                `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`
-              );
-              const weatherData = await response.json();
-              span.event(generateUUID(), "Weather data received");
-              retrieval.output(JSON.stringify(weatherData));
-              return weatherData;
-            },
-          },
-          getAirportSuggestions: {
+          searchAirports: {
             description: "Get airport suggestions based on a search query",
             parameters: z.object({
               query: z.string(),
             }),
             execute: async ({ query }) => {
-              const span = trace.span({
-                id: `tool-${generateUUID()}`,
-              });
-              const retrieval = span.retrieval({
-                id: generateUUID(),
-                name: "Tool call - Airport suggestions",
-              });
-
-              retrieval.input(JSON.stringify({ query }));
-              span.event(generateUUID(), "Airport suggestions requested");
-
-              const response = await fetch(
-                `${rapidApiBaseUrl}/flights/auto-complete?query=${encodeURIComponent(
-                  query
-                )}`,
-                rapidApiOptions
-              );
-              const suggestions = await response.json();
-              span.event(generateUUID(), "Airport suggestions received");
-              retrieval.output(JSON.stringify(suggestions));
+              const suggestions = await bookingClient.searchAirports(query);
               return suggestions;
             },
           },
-          searchOneWayFlights: {
-            description: "Search for one-way flights between airports",
+          searchFlights: {
+            description: "Search for flights between airports",
             parameters: z.object({
-              originAirportCode: z.string(),
-              destinationAirportCode: z.string(),
-              departureDate: z.string(), // Format: YYYY-MM-DD
+              type: z.enum(["ONEWAY", "ROUND"]),
+              adults: z.number(),
+              cabinClass: z.enum([
+                "ECONOMY",
+                "BUSINESS",
+                "FIRST",
+                "PREMIUM_ECONOMY",
+              ]),
+              children: z.number(),
+              from: z.string(),
+              to: z.string(),
+              fromCountry: z.string(),
+              toCountry: z.string(),
+              depart: z.string(),
+              return: z.string().optional(),
+              sort: z.enum(["CHEAPEST", "FASTEST", "BEST"]),
+              enableVI: z.number(),
+              stops: z.number().optional(),
+              depTimeInt: z.string().optional(),
+              arrTimeInt: z.string().optional(),
+              duration: z.number().optional(),
+              page: z.number().optional(),
+              limit: z.number().optional().default(10),
             }),
-            execute: async ({
-              originAirportCode,
-              destinationAirportCode,
-              departureDate,
-            }) => {
-              const span = trace.span({
-                id: `tool-${generateUUID()}`,
-              });
-              const retrieval = span.retrieval({
-                id: generateUUID(),
-                name: "Tool call - One-way flight search",
-              });
+            execute: async (params) => {
+              console.log("🛠️ Executing searchFlights tool", params);
 
-              retrieval.input(
-                JSON.stringify({
-                  originAirportCode,
-                  destinationAirportCode,
-                  departureDate,
-                })
-              );
-              span.event(generateUUID(), "One-way flights requested");
-
-              const response = await fetch(
-                `${rapidApiBaseUrl}/flights/search-one-way?originAirportCode=${originAirportCode}&destinationAirportCode=${destinationAirportCode}&departureDate=${departureDate}`,
-                rapidApiOptions
-              );
-              const result = await response.json();
-              const truncatedResults = truncateFlightDetails(result).splice(0, 15);
-              span.event(generateUUID(), "One-way flights received");
-              retrieval.output(JSON.stringify(truncatedResults));
-              return truncatedResults;
-            },
-          },
-          searchRoundTripFlights: {
-            description: "Search for round-trip flights between airports",
-            parameters: z.object({
-              originAirportCode: z.string(),
-              destinationAirportCode: z.string(),
-              departureDate: z.string(), // Format: YYYY-MM-DD
-              returnDate: z.string(), // Format: YYYY-MM-DD
-            }),
-            execute: async ({
-              originAirportCode,
-              destinationAirportCode,
-              departureDate,
-              returnDate,
-            }) => {
-              const span = trace.span({
-                id: `tool-${generateUUID()}`,
-              });
-              const retrieval = span.retrieval({
-                id: generateUUID(),
-                name: "Tool call - Round-trip flight search",
-              });
-
-              retrieval.input(
-                JSON.stringify({
-                  originAirportCode,
-                  destinationAirportCode,
-                  departureDate,
-                  returnDate,
-                })
-              );
-              span.event(generateUUID(), "Round-trip flights requested");
-
-              const response = await fetch(
-                `${rapidApiBaseUrl}/flights/search-roundtrip?originAirportCode=${originAirportCode}&destinationAirportCode=${destinationAirportCode}&departureDate=${departureDate}&returnDate=${returnDate}`,
-                rapidApiOptions
-              );
-              const result = await response.json();
-              const truncatedResults = truncateFlightDetails(result).splice(0, 15);
-              span.event(generateUUID(), "Round-trip flights received");
-              retrieval.output(JSON.stringify(truncatedResults));
-              return truncatedResults;
+              const flights = await bookingClient.searchFlights(params);
+              return flights;
             },
           },
           getFlightDetails: {
             description: "Get detailed information about a specific flight",
             parameters: z.object({
-              itemKey: z.string(),
-              priceKey: z.string(),
+              flightId: z.string(),
+              excludedAncillaries: z.string(),
+              priceInSearch: z.string(),
             }),
-            execute: async ({ itemKey, priceKey }) => {
-              const span = trace.span({
-                id: `tool-${generateUUID()}`,
-              });
-              const retrieval = span.retrieval({
-                id: generateUUID(),
-                name: "Tool call - Flight details",
-              });
-
-              retrieval.input(JSON.stringify({ itemKey, priceKey }));
-              span.event(generateUUID(), "Flight details requested");
-
-              const response = await fetch(
-                `${rapidApiBaseUrl}/flights/details?itemKey=${itemKey}&priceKey=${priceKey}`,
-                rapidApiOptions
-              );
-              const details = await response.json();
-              span.event(generateUUID(), "Flight details received");
-              retrieval.output(JSON.stringify(details));
+            execute: async (params) => {
+              console.log("🛠️ Executing getFlightDetails tool", params);
+              const details = await bookingClient.getFlightDetails(params);
               return details;
-            },
-          },
-          getFlightUpsells: {
-            description: "Get upsell options for a specific flight",
-            parameters: z.object({
-              itemKey: z.string(),
-              priceKey: z.string(),
-            }),
-            execute: async ({ itemKey, priceKey }) => {
-              const span = trace.span({
-                id: `tool-${generateUUID()}`,
-              });
-              const retrieval = span.retrieval({
-                id: generateUUID(),
-                name: "Tool call - Flight upsells",
-              });
-
-              retrieval.input(JSON.stringify({ itemKey, priceKey }));
-              span.event(generateUUID(), "Flight upsells requested");
-
-              const response = await fetch(
-                `${rapidApiBaseUrl}/flights/upsells?itemKey=${itemKey}&priceKey=${priceKey}`,
-                rapidApiOptions
-              );
-              const upsells = await response.json();
-              span.event(generateUUID(), "Flight upsells received");
-              retrieval.output(JSON.stringify(upsells));
-              return upsells;
             },
           },
           confirmBooking: {
             description: "Confirm a flight booking with passenger details",
             parameters: z.object({
               flightNumber: z.string(),
-              flightId: z.string(),
+              flightId: z.string().default(generateUUID()),
               passengerName: z.string(),
-              passengerEmail: z.string(),
+              passengerEmail: z.string().email(),
               passengerPhone: z.string(),
             }),
             execute: async ({
@@ -379,55 +184,25 @@ export async function POST(request: Request) {
               passengerEmail,
               passengerPhone,
             }) => {
-              const span = trace.span({
-                id: `tool-${generateUUID()}`,
+              console.log("🛠️ EXECUTING confirmBooking");
+              await mail.sendFlightConfirmation(passengerEmail, {
+                flightNumber,
+                flightId,
+                passengerName,
+                passengerEmail,
+                passengerPhone,
               });
-              const retrieval = span.retrieval({
-                id: generateUUID(),
-                name: "Tool call - Confirm booking",
-              });
-
-              retrieval.input(
-                JSON.stringify({
-                  flightNumber,
-                  flightId,
-                  passengerName,
-                  passengerEmail,
-                  passengerPhone,
-                })
-              );
-              span.event(generateUUID(), "Booking confirmation requested");
-
-              const response = await fetch(
-                "https://api.npoint.io/da8437240100715f1d41",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    flightNumber,
-                    flightId,
-                    passengerName,
-                    passengerEmail,
-                    passengerPhone,
-                  }),
-                }
-              );
-              const bookingConfirmation = await response.json();
-              span.event(generateUUID(), "Booking confirmation received");
-              retrieval.output(JSON.stringify(bookingConfirmation));
-              return bookingConfirmation;
+              return {
+                flightNumber,
+                flightId,
+                passengerName,
+                passengerEmail,
+                passengerPhone,
+              };
             },
           },
         },
-        onFinish: async ({
-          response,
-          toolCalls,
-          finishReason,
-          usage,
-          logprobs,
-        }) => {
+        onFinish: async ({ response }) => {
           if (session.user?.id) {
             try {
               const responseMessagesWithoutIncompleteToolCalls =
@@ -436,46 +211,6 @@ export async function POST(request: Request) {
                 return;
               }
               const messageId = generateUUID();
-
-              const generation = trace.generation({
-                id: messageId,
-                model: model.apiIdentifier,
-                provider: provider as "openai" | "anthropic",
-                messages: messages.map((message) => ({
-                  content: message.content as string,
-                  role: message.role as "user" | "assistant",
-                })),
-                modelParameters: {},
-              });
-
-              generation.result({
-                choices: response.messages.map((m, i) => ({
-                  finish_reason: finishReason,
-                  index: i,
-                  tool_calls: toolCalls,
-                  logprobs: null,
-                  message: {
-                    role: m.role,
-                    content:
-                      typeof m.content === "string"
-                        ? m.content
-                        : m.content
-                            .map((c) => (c.type === "text" ? c.text : ""))
-                            .join(""),
-                  },
-                })),
-                created: new Date().getTime(),
-                id: messageId,
-                model: model.apiIdentifier,
-                object: "chat.completion",
-                usage: {
-                  completion_tokens: usage.completionTokens,
-                  prompt_tokens: usage.promptTokens,
-                  total_tokens: usage.totalTokens,
-                },
-              } as ChatCompletionResult);
-              generation.end();
-              trace.end();
 
               await saveMessages({
                 messages: responseMessagesWithoutIncompleteToolCalls.map(
