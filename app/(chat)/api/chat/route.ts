@@ -214,7 +214,8 @@ export async function POST(request: Request) {
                 `${rapidApiBaseUrl}/flights/search-roundtrip?originAirportCode=${originAirportCode}&destinationAirportCode=${destinationAirportCode}&departureDate=${departureDate}&returnDate=${returnDate}`,
                 rapidApiOptions
               );
-              return await response.json();
+              const result = await response.json();
+              return truncateFlightDetails(result).splice(0, 15);
             },
           },
           getFlightDetails: {

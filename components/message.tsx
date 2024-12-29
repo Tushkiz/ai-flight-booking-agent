@@ -20,7 +20,6 @@ import { MessageEditor } from "./message-editor";
 import { PreviewAttachment } from "./preview-attachment";
 import ToolCallLoading from "./tool-call-loading";
 import { Button } from "./ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
@@ -86,20 +85,15 @@ const PurePreviewMessage = ({
             {message.content && mode === "view" && (
               <div className="flex flex-row gap-2 items-start">
                 {message.role === "user" && !isReadonly && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
-                        onClick={() => {
-                          setMode("edit");
-                        }}
-                      >
-                        <PencilEditIcon />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit message</TooltipContent>
-                  </Tooltip>
+                  <Button
+                    variant="ghost"
+                    className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
+                    onClick={() => {
+                      setMode("edit");
+                    }}
+                  >
+                    <PencilEditIcon />
+                  </Button>
                 )}
 
                 <div
@@ -176,6 +170,23 @@ const PurePreviewMessage = ({
                               reload();
                             }}
                           />
+                        ) : toolName === "searchRoundTripFlights" ? (
+                          <FlightsOptionsList
+                            result={result}
+                            onChange={(flight) => {
+                              setMessages((prevMessages) => {
+                                const newMessages = [...prevMessages];
+                                newMessages.push({
+                                  content: `I will go with the flight ${flight.flightNumber}.`,
+                                  id: generateUUID(),
+                                  role: "user",
+                                });
+
+                                return newMessages;
+                              });
+                              reload();
+                            }}
+                          />
                         ) : toolName === "confirmBooking" ? (
                           <FlightBookingConfirmation result={result} />
                         ) : toolName === "getFlightDetails" ? (
@@ -206,6 +217,8 @@ const PurePreviewMessage = ({
                       ) : toolName === "getAirportSuggestions" ? (
                         <ToolCallLoading message="Getting airport suggestions" />
                       ) : toolName === "searchOneWayFlights" ? (
+                        <ToolCallLoading message="Searching flights" />
+                      ) : toolName === "searchRoundTripFlights" ? (
                         <ToolCallLoading message="Searching flights" />
                       ) : toolName === "getFlightDetails" ? (
                         <ToolCallLoading message="Getting flight details" />
