@@ -125,7 +125,6 @@ const PurePreviewMessage = ({
               <div className="flex flex-col gap-4">
                 {message.toolInvocations.map((toolInvocation) => {
                   const { toolName, toolCallId, state, args } = toolInvocation;
-                  console.log(toolName, toolCallId, state, args);
 
                   if (state === "result") {
                     const { result } = toolInvocation;
@@ -206,24 +205,21 @@ const PurePreviewMessage = ({
                     <div
                       key={toolCallId}
                       className={cx({
-                        skeleton: [
-                          "getWeather",
-                          // "getAirportSuggestions",
-                        ].includes(toolName),
+                        skeleton: ["getWeather"].includes(toolName),
                       })}
                     >
                       {toolName === "getWeather" ? (
                         <Weather />
                       ) : toolName === "getAirportSuggestions" ? (
-                        <ToolCallLoading message="Getting airport suggestions" />
+                        <ToolCallLoading message="✈️  Getting airport suggestions" />
                       ) : toolName === "searchOneWayFlights" ? (
-                        <ToolCallLoading message="Searching flights" />
+                        <ToolCallLoading message="🔎 Searching one-way flights" />
                       ) : toolName === "searchRoundTripFlights" ? (
-                        <ToolCallLoading message="Searching flights" />
+                        <ToolCallLoading message="🔄 Searching round-trip flights" />
                       ) : toolName === "getFlightDetails" ? (
-                        <ToolCallLoading message="Getting flight details" />
+                        <ToolCallLoading message="📋 Getting flight details" />
                       ) : toolName === "confirmBooking" ? (
-                        <ToolCallLoading message="Confirming booking" />
+                        <ToolCallLoading message="✅ Confirming booking" />
                       ) : null}
                     </div>
                   );
