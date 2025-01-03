@@ -118,7 +118,7 @@ export function FlightsDetails({ result }: { result: FlightInformation }) {
             <img
               src={`https://s1.pclncdn.com/design-assets/fly/carrier-logos/${airline[0].smallImage}`}
               alt={airline[0].name}
-              className="w-10 h-10 object-contain"
+              className="size-10 object-contain"
             />
             <div>
               <span className="font-bold text-lg">{airline[0].name}</span>

@@ -18,7 +18,7 @@ export default function FlightBookingConfirmation({
       <div className="rounded-2xl p-8 bg-gradient-to-br from-blue-50 to-white text-black shadow-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center bg-green-100 rounded-full px-4 py-1.5 mb-4">
-            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            <div className="size-2 bg-green-500 rounded-full mr-2"></div>
             <span className="text-green-700 text-sm font-medium">Booking Confirmed</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Thank You!</h1>
