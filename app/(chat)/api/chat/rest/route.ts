@@ -5,8 +5,8 @@ import { getMostRecentUserMessage } from "@/lib/utils";
 import { type Message, convertToCoreMessages } from "ai";
 import { NextResponse } from "next/server";
 import {
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall,
+    ChatCompletionMessageParam,
+    ChatCompletionMessageToolCall,
 } from "openai/resources/index.mjs";
 
 export const maxDuration = 60;
