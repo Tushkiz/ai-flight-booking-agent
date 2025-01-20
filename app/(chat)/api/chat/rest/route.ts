@@ -1,12 +1,13 @@
 import { openai } from "@/lib/ai/openai";
+import { systemPrompt } from "@/lib/ai/prompts";
 import { bookingClient } from "@/lib/booking.com/api";
 import { mail } from "@/lib/resend/mail";
 import { getMostRecentUserMessage } from "@/lib/utils";
 import { type Message, convertToCoreMessages } from "ai";
 import { NextResponse } from "next/server";
 import {
-    ChatCompletionMessageParam,
-    ChatCompletionMessageToolCall,
+  ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall,
 } from "openai/resources/index.mjs";
 
 export const maxDuration = 60;
@@ -44,7 +45,10 @@ export async function POST(request: Request) {
 
   try {
     const result = await openai.chat.completions.create({
-      messages: coreMessages as unknown as ChatCompletionMessageParam[],
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...coreMessages,
+      ] as unknown as ChatCompletionMessageParam[],
       max_tokens: 2000,
       model: modelId,
       tools: [
@@ -295,6 +299,7 @@ async function executeTools(tools?: ChatCompletionMessageToolCall[]) {
 
   const results = await Promise.all(toolPromises);
   return results.filter(
-    (result): result is { name: AllowedTools; result: any, args: any } => result !== null
+    (result): result is { name: AllowedTools; result: any; args: any } =>
+      result !== null
   );
 }
