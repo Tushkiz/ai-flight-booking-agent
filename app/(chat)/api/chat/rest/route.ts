@@ -26,6 +26,12 @@ const flightTools: AllowedTools[] = [
 ];
 
 export async function POST(request: Request) {
+  const token = request.headers.get("x-maxim-token");
+
+  if (!token || token !== process.env.MAXIM_TOKEN) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const {
     id,
     messages,
