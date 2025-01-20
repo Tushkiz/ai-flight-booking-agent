@@ -31,7 +31,7 @@ dependencies:
     version: 6.36.1
   '@maximai/maxim-js':
     specifier: ^6.0.1
-    version: 6.0.1
+    version: 6.0.1(openai@4.79.1)
   '@radix-ui/react-alert-dialog':
     specifier: ^1.1.2
     version: 1.1.4(@types/react-dom@18.3.5)(@types/react@18.3.18)(react-dom@19.0.0-rc-45804af1-20241021)(react@19.0.0-rc-45804af1-20241021)
@@ -131,6 +131,9 @@ dependencies:
   next-themes:
     specifier: ^0.3.0
     version: 0.3.0(react-dom@19.0.0-rc-45804af1-20241021)(react@19.0.0-rc-45804af1-20241021)
+  openai:
+    specifier: ^4.79.1
+    version: 4.79.1(zod@3.24.1)
   orderedmap:
     specifier: ^2.1.1
     version: 2.1.1
@@ -1570,7 +1573,7 @@ packages:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  /@langchain/core@0.2.36(openai@4.77.0):
+  /@langchain/core@0.2.36(openai@4.79.1):
     resolution: {integrity: sha512-qHLvScqERDeH7y2cLuJaSAlMwg3f/3Oc9nayRSXRU2UuaK/SOhI42cxiPLj1FnuHJSmN0rBQFkrLx02gI4mcVg==}
     engines: {node: '>=18'}
     requiresBuild: true
@@ -1579,7 +1582,7 @@ packages:
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.16
-      langsmith: 0.1.68(openai@4.77.0)
+      langsmith: 0.1.68(openai@4.79.1)
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -1596,22 +1599,23 @@ packages:
     engines: {node: '>=18'}
     requiresBuild: true
     dependencies:
-      '@langchain/core': 0.2.36(openai@4.77.0)
+      '@langchain/core': 0.2.36(openai@4.79.1)
       js-tiktoken: 1.0.16
-      openai: 4.77.0(zod@3.24.1)
+      openai: 4.79.1(zod@3.24.1)
       zod: 3.24.1
       zod-to-json-schema: 3.24.1(zod@3.24.1)
     transitivePeerDependencies:
       - encoding
+      - ws
     dev: false
     optional: true
 
-  /@langchain/textsplitters@0.0.3:
+  /@langchain/textsplitters@0.0.3(openai@4.79.1):
     resolution: {integrity: sha512-cXWgKE3sdWLSqAa8ykbCcUsUF1Kyr5J3HOWYGuobhPEycXW4WI++d5DhzdpL238mzoEXTi90VqfSCra37l5YqA==}
     engines: {node: '>=18'}
     requiresBuild: true
     dependencies:
-      '@langchain/core': 0.2.36(openai@4.77.0)
+      '@langchain/core': 0.2.36(openai@4.79.1)
       js-tiktoken: 1.0.16
     transitivePeerDependencies:
       - openai
@@ -1654,10 +1658,10 @@ packages:
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
     dev: false
 
-  /@maximai/maxim-js@6.0.1:
+  /@maximai/maxim-js@6.0.1(openai@4.79.1):
     resolution: {integrity: sha512-BcXLnQZIeR3swSkR9rYm23JR0jvGfLokbcD+ftCYiCSNC0UPNbGsyNS7RvquyFY6INkJTK/yggacUaKl1noyUA==}
     optionalDependencies:
-      langchain: 0.2.20
+      langchain: 0.2.20(openai@4.79.1)
     transitivePeerDependencies:
       - '@aws-sdk/client-s3'
       - '@aws-sdk/client-sagemaker-runtime'
@@ -2689,7 +2693,6 @@ packages:
       '@types/node': 22.10.2
       form-data: 4.0.1
     dev: false
-    optional: true
 
   /@types/node@18.19.68:
     resolution: {integrity: sha512-QGtpFH1vB99ZmTa63K4/FU8twThj4fuVSBkGddTp7uIL/cuoLWIUSL2RcOaigBhfR+hg5pgGkBnkoOxrTVBMKw==}
@@ -2697,7 +2700,6 @@ packages:
     dependencies:
       undici-types: 5.26.5
     dev: false
-    optional: true
 
   /@types/node@22.10.2:
     resolution: {integrity: sha512-Xxr6BBRCAOQixvonOye19wnzyDiUtTeqldOOmj3CkeblonbccA12PFwlufvRdrpjXxqnmUaeiU5EOA+7s5diUQ==}
@@ -2882,7 +2884,6 @@ packages:
     dependencies:
       event-target-shim: 5.0.1
     dev: false
-    optional: true
 
   /acorn-jsx@5.3.2(acorn@8.14.0):
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -2905,7 +2906,6 @@ packages:
     dependencies:
       humanize-ms: 1.2.1
     dev: false
-    optional: true
 
   /ai@4.0.20(react@19.0.0-rc-45804af1-20241021)(zod@3.24.1):
     resolution: {integrity: sha512-dYevYKtREcjSVopBDFWVNca7WJEI1p9Vr9eo7V7fZHzi2vXGDyEa2WYatjFbpR6z6gpVAxKHsof8EoN+B1IAsA==}
@@ -3099,7 +3099,6 @@ packages:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
     requiresBuild: true
     dev: false
-    optional: true
 
   /available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
@@ -3341,7 +3340,6 @@ packages:
     dependencies:
       delayed-stream: 1.0.0
     dev: false
-    optional: true
 
   /comma-separated-tokens@2.0.3:
     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
@@ -3495,7 +3493,6 @@ packages:
     engines: {node: '>=0.4.0'}
     requiresBuild: true
     dev: false
-    optional: true
 
   /dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
@@ -4274,7 +4271,6 @@ packages:
     engines: {node: '>=6'}
     requiresBuild: true
     dev: false
-    optional: true
 
   /eventemitter3@4.0.7:
     resolution: {integrity: sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==}
@@ -4372,7 +4368,6 @@ packages:
     resolution: {integrity: sha512-qfqtYan3rxrnCk1VYaA4H+Ms9xdpPqvLZa6xmMgFvhO32x7/3J/ExcTd6qpxM0vH2GdMI+poehyBZvqfMTto8A==}
     requiresBuild: true
     dev: false
-    optional: true
 
   /form-data@4.0.1:
     resolution: {integrity: sha512-tzN8e4TX8+kkxGPK8D5u0FNmjPUjw3lwC9lSLxxoB/+GtsJG91CO8bSWy73APlgAZzZbXEYZJuxjkHH2w+Ezhw==}
@@ -4383,7 +4378,6 @@ packages:
       combined-stream: 1.0.8
       mime-types: 2.1.35
     dev: false
-    optional: true
 
   /formdata-node@4.4.1:
     resolution: {integrity: sha512-0iirZp3uVDjVGt9p49aTaqjk84TrglENEDuqfdlZQ1roC9CWlPk6Avf8EEnZNcAqPonwkG35x4n3ww/1THYAeQ==}
@@ -4393,7 +4387,6 @@ packages:
       node-domexception: 1.0.0
       web-streams-polyfill: 4.0.0-beta.3
     dev: false
-    optional: true
 
   /framer-motion@11.15.0(react-dom@19.0.0-rc-45804af1-20241021)(react@19.0.0-rc-45804af1-20241021):
     resolution: {integrity: sha512-MLk8IvZntxOMg7lDBLw2qgTHHv664bYoYmnFTmE0Gm/FW67aOJk0WM3ctMcG+Xhcv+vh5uyyXwxvxhSeJzSe+w==}
@@ -4676,7 +4669,6 @@ packages:
     dependencies:
       ms: 2.1.3
     dev: false
-    optional: true
 
   /ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
@@ -5081,7 +5073,7 @@ packages:
       json-buffer: 3.0.1
     dev: true
 
-  /langchain@0.2.20:
+  /langchain@0.2.20(openai@4.79.1):
     resolution: {integrity: sha512-tbels6Rr524iMM3VOQ4aTGnEOOjAA1BQuBR8u/8gJ2yT48lMtIQRAN32Y4KVjKK+hEWxHHlmLBrtgLpTphFjNA==}
     engines: {node: '>=18'}
     requiresBuild: true
@@ -5262,14 +5254,14 @@ packages:
       youtubei.js:
         optional: true
     dependencies:
-      '@langchain/core': 0.2.36(openai@4.77.0)
+      '@langchain/core': 0.2.36(openai@4.79.1)
       '@langchain/openai': 0.2.11
-      '@langchain/textsplitters': 0.0.3
+      '@langchain/textsplitters': 0.0.3(openai@4.79.1)
       binary-extensions: 2.3.0
       js-tiktoken: 1.0.16
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
-      langsmith: 0.1.68(openai@4.77.0)
+      langsmith: 0.1.68(openai@4.79.1)
       openapi-types: 12.1.3
       p-retry: 4.6.2
       uuid: 10.0.0
@@ -5282,7 +5274,7 @@ packages:
     dev: false
     optional: true
 
-  /langsmith@0.1.68(openai@4.77.0):
+  /langsmith@0.1.68(openai@4.79.1):
     resolution: {integrity: sha512-otmiysWtVAqzMx3CJ4PrtUBhWRG5Co8Z4o7hSZENPjlit9/j3/vm3TSvbaxpDYakZxtMjhkcJTqrdYFipISEiQ==}
     requiresBuild: true
     peerDependencies:
@@ -5293,7 +5285,7 @@ packages:
     dependencies:
       '@types/uuid': 10.0.0
       commander: 10.0.1
-      openai: 4.77.0(zod@3.24.1)
+      openai: 4.79.1(zod@3.24.1)
       p-queue: 6.6.2
       p-retry: 4.6.2
       semver: 7.6.3
@@ -5853,7 +5845,6 @@ packages:
     engines: {node: '>= 0.6'}
     requiresBuild: true
     dev: false
-    optional: true
 
   /mime-types@2.1.35:
     resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==}
@@ -5862,7 +5853,6 @@ packages:
     dependencies:
       mime-db: 1.52.0
     dev: false
-    optional: true
 
   /minimatch@3.1.2:
     resolution: {integrity: sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw==}
@@ -6019,7 +6009,6 @@ packages:
     engines: {node: '>=10.5.0'}
     requiresBuild: true
     dev: false
-    optional: true
 
   /node-fetch@2.7.0:
     resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
@@ -6033,7 +6022,6 @@ packages:
     dependencies:
       whatwg-url: 5.0.0
     dev: false
-    optional: true
 
   /node-gyp-build@4.8.4:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
@@ -6134,13 +6122,15 @@ packages:
       wrappy: 1.0.2
     dev: true
 
-  /openai@4.77.0(zod@3.24.1):
-    resolution: {integrity: sha512-WWacavtns/7pCUkOWvQIjyOfcdr9X+9n9Vvb0zFeKVDAqwCMDHB+iSr24SVaBAhplvSG6JrRXFpcNM9gWhOGIw==}
+  /openai@4.79.1(zod@3.24.1):
+    resolution: {integrity: sha512-M7P5/PKnT/S/B5v0D64giC9mjyxFYkqlCuQFzR5hkdzMdqUuHf8T1gHhPGPF5oAvu4+PO3TvJv/qhZoS2bqAkw==}
     hasBin: true
-    requiresBuild: true
     peerDependencies:
+      ws: ^8.18.0
       zod: ^3.23.8
     peerDependenciesMeta:
+      ws:
+        optional: true
       zod:
         optional: true
     dependencies:
@@ -6155,7 +6145,6 @@ packages:
     transitivePeerDependencies:
       - encoding
     dev: false
-    optional: true
 
   /openapi-types@12.1.3:
     resolution: {integrity: sha512-N4YtSYJqghVu4iek2ZUvcN/0aqH1kRDuNqzcycDxhOUpg7GdvLa2F3DgS6yBNhInhv2r/6I0Flkn7CqL8+nIcw==}
@@ -7325,7 +7314,6 @@ packages:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
     requiresBuild: true
     dev: false
-    optional: true
 
   /trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
@@ -7452,7 +7440,6 @@ packages:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
     requiresBuild: true
     dev: false
-    optional: true
 
   /undici-types@6.20.0:
     resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
@@ -7602,13 +7589,11 @@ packages:
     engines: {node: '>= 14'}
     requiresBuild: true
     dev: false
-    optional: true
 
   /webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
     requiresBuild: true
     dev: false
-    optional: true
 
   /whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
@@ -7617,7 +7602,6 @@ packages:
       tr46: 0.0.3
       webidl-conversions: 3.0.1
     dev: false
-    optional: true
 
   /which-boxed-primitive@1.1.1:
     resolution: {integrity: sha512-TbX3mj8n0odCBFVlY8AxkqcHASw3L60jIuF8jFP78az3C2YhmGvqbHBpAjTRH2/xqYunrJ9g1jSyjCjpoWzIAA==}
