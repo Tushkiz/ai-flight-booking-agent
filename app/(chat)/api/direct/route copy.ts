@@ -1,8 +1,8 @@
 import { openai } from "@/lib/ai/openai";
 import { bookingClient } from "@/lib/booking.com/api";
 import { mail } from "@/lib/resend/mail";
-import { getMostRecentUserMessageCustom } from "@/lib/utils";
-import { type Message, ToolInvocation } from "ai";
+import { getMostRecentUserMessage } from "@/lib/utils";
+import { type Message, ToolInvocation, convertToCoreMessages } from "ai";
 import { NextResponse } from "next/server";
 import {
   ChatCompletion,
@@ -17,6 +17,13 @@ type AllowedTools =
   | "searchFlights"
   | "getFlightDetails"
   | "confirmBooking";
+
+const flightTools: AllowedTools[] = [
+  "searchAirports",
+  "searchFlights",
+  "getFlightDetails",
+  "confirmBooking",
+];
 
 const tools = [
   {
@@ -214,17 +221,7 @@ type CustomMessage = {
   role: string;
   content: string;
   toolInvocations?: Array<ToolInvocation>;
-  name?: string;
-  tool_call_id?: string;
-  tool_calls?: ChatCompletionMessageToolCall[];
 };
-
-interface ToolResult<T = any> {
-  name: AllowedTools;
-  result: T;
-  args: any;
-  id: string;
-}
 
 export async function POST(request: Request) {
   const token = request.headers.get("x-maxim-token");
@@ -243,14 +240,29 @@ export async function POST(request: Request) {
     modelId: string;
   } = await request.json();
 
-  const userMessage = getMostRecentUserMessageCustom(messages);
+  const coreMessages = convertToCoreMessages(messages);
+  const userMessage = getMostRecentUserMessage(coreMessages);
 
   if (!userMessage) {
     return new Response("No user message found", { status: 400 });
   }
 
   try {
-    let finalMessages = [...messages] as CustomMessage[];
+    let finalMessages = [] as CustomMessage[];
+
+    for (const message of coreMessages) {
+      if (message.role === "user") {
+        finalMessages.push({
+          role: "user",
+          content: message.content as string,
+        });
+      } else {
+        finalMessages.push({
+          role: "assistant",
+          content: message.content as string,
+        });
+      }
+    }
 
     let result = await openai.chat.completions.create({
       messages: finalMessages as unknown as ChatCompletionMessageParam[],
@@ -270,91 +282,66 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       messages: finalMessages.map((message) => {
+        if (message.toolInvocations) {
+          return {
+            ...message,
+            content: null,
+          };
+        }
+
         return message;
       }),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in AI completion:", error);
-    return NextResponse.json({
-      error: error?.error ?? error?.message ?? "Something went wrong", 
-    },{ status: 500 });
+    return new Response("Error processing request", { status: 500 });
   }
 }
 
-async function executeTools(
-  tools?: ChatCompletionMessageToolCall[]
-): Promise<ToolResult[]> {
+async function executeTools(tools?: ChatCompletionMessageToolCall[]) {
   if (!tools) {
     return [];
   }
 
   const toolPromises = tools.map(async (tool) => {
-    try {
-      const args = JSON.parse(tool.function.arguments);
-      const toolName = tool.function.name as AllowedTools;
-
-      let result: ToolResult | null = null;
-
-      switch (toolName) {
-        case "searchAirports": {
-          const suggestions = await bookingClient.searchAirports(args.query);
-          result = { name: toolName, result: suggestions, args, id: tool.id };
-          break;
-        }
-        case "searchFlights": {
-          const flights = await bookingClient.searchFlights(args);
-          result = { name: toolName, result: flights, args, id: tool.id };
-          break;
-        }
-        case "getFlightDetails": {
-          const details = await bookingClient.getFlightDetails(args);
-          result = { name: toolName, result: details, args, id: tool.id };
-          break;
-        }
-        case "confirmBooking": {
-          const {
-            flightNumber,
-            flightId,
-            passengerName,
-            passengerEmail,
-            passengerPhone,
-          } = args;
-
-          await mail.sendFlightConfirmation(passengerEmail, {
-            flightNumber,
-            flightId,
-            passengerName,
-            passengerEmail,
-            passengerPhone,
-          });
-          result = { name: toolName, result: "success", args, id: tool.id };
-          break;
-        }
-      }
-
-      return result;
-    } catch (error) {
-      console.error(`Error executing tool ${tool.function.name}:`, error);
-      // Return a structured error result instead of null
-      return {
-        name: tool.function.name as AllowedTools,
-        result: {
-          error:
-            error instanceof Error ? error.message : "Unknown error occurred",
-        },
-        args: JSON.parse(tool.function.arguments),
-      };
+    const args = JSON.parse(tool.function.arguments);
+    const toolName = tool.function.name as AllowedTools;
+    switch (toolName) {
+      case "searchAirports":
+        const suggestions = await bookingClient.searchAirports(args.query);
+        return { name: toolName, result: suggestions, args };
+      case "searchFlights":
+        const flights = await bookingClient.searchFlights(args);
+        return { name: toolName, result: flights, args };
+      case "getFlightDetails":
+        const details = await bookingClient.getFlightDetails(args);
+        return { name: toolName, result: details, args };
+      case "confirmBooking":
+        const {
+          flightNumber,
+          flightId,
+          passengerName,
+          passengerEmail,
+          passengerPhone,
+        } = args;
+        await mail.sendFlightConfirmation(passengerEmail, {
+          flightNumber,
+          flightId,
+          passengerName,
+          passengerEmail,
+          passengerPhone,
+        });
+        return { name: toolName, result: "success", args };
+      default:
+        return null;
     }
   });
 
-  const results = await Promise.allSettled(toolPromises);
-
-  return results
-    .filter(
-      (result): result is PromiseFulfilledResult<ToolResult> =>
-        result.status === "fulfilled" && result.value !== null
-    )
-    .map((result) => result.value);
+  const results = await Promise.all(toolPromises);
+  return results.filter(
+    (result): result is { name: AllowedTools; result: any; args: any } =>
+      result !== null
+  );
 }
 
 async function toolCallChain(
@@ -362,24 +349,23 @@ async function toolCallChain(
   messages: CustomMessage[],
   modelId: string
 ) {
-  const toolsCalls = result.choices[0].message["tool_calls"];
+  const toolCallResults = await executeTools(
+    result.choices[0].message["tool_calls"]
+  );
 
-  const toolCallResults = await executeTools(toolsCalls);
-
-  if (toolCallResults.length) {
-    messages.push({
-      role: "assistant",
-      content: "",
-      tool_calls: toolsCalls,
-    });
-  }
-
-  toolCallResults.forEach((result) => {
-    messages.push({
-      role: "tool",
-      content: JSON.stringify(result.result),
-      tool_call_id: result.id,
-    });
+  messages.push({
+    role: "assistant",
+    content: `There was a tool call and tool call result is - ${JSON.stringify(
+      toolCallResults
+    )}`,
+    toolInvocations: toolCallResults.map((result) => ({
+      name: result.name,
+      args: result.args,
+      result: result.result,
+      state: "result",
+      toolName: result.name,
+      toolCallId: result.name,
+    })),
   });
 
   const response = await openai.chat.completions.create({

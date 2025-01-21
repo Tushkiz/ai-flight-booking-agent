@@ -200,6 +200,13 @@ export function getMostRecentUserMessage(messages: Array<CoreMessage>) {
   return userMessages.at(-1);
 }
 
+export function getMostRecentUserMessageCustom(
+  messages: { role: string; content: string }[]
+) {
+  const userMessages = messages.filter((message) => message.role === "user");
+  return userMessages.at(-1);
+}
+
 export function getDocumentTimestampByIndex(
   documents: Array<Document>,
   index: number
