@@ -1,8 +1,9 @@
 import { openai } from "@/lib/ai/openai";
 import { flightSearchPrompt } from "@/lib/ai/prompts";
 import { bookingClient } from "@/lib/booking.com/api";
+import redis from "@/lib/redis";
 import { mail } from "@/lib/resend/mail";
-import { getMostRecentUserMessageCustom } from "@/lib/utils";
+import { generateUUID, getMostRecentUserMessageCustom } from "@/lib/utils";
 import { type Message, ToolInvocation } from "ai";
 import { NextResponse } from "next/server";
 import {
@@ -234,7 +235,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const {
+  let {
     id,
     messages,
     modelId,
@@ -244,6 +245,8 @@ export async function POST(request: Request) {
     modelId: string;
   } = await request.json();
 
+  const conversationId = id ?? generateUUID();
+
   const userMessage = getMostRecentUserMessageCustom(messages);
 
   if (!userMessage) {
@@ -251,6 +254,17 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Attempt to retrieve cached conversation from Redis
+    const cache = await redis.get<string>(conversationId);
+
+    if (cache) {
+      // Parse the cached conversation
+      const conversation = cache as unknown as Message[];
+
+      // Merge cached messages with current messages
+      messages = [...conversation, ...messages];
+    }
+
     const finalMessages = [
       ...messages.filter((message) => message.role !== "system"),
     ] as CustomMessage[];
@@ -260,9 +274,11 @@ export async function POST(request: Request) {
       content: flightSearchPrompt,
     });
 
+    console.dir(finalMessages, { depth: null });
+
     let result = await openai.chat.completions.create({
       messages: finalMessages as unknown as ChatCompletionMessageParam[],
-      max_tokens: 2000,
+      max_tokens: 5000,
       model: modelId,
       tools: tools as any,
     });
@@ -276,10 +292,11 @@ export async function POST(request: Request) {
       });
     }
 
+    await redis.set(conversationId, JSON.stringify(finalMessages));
+
     return NextResponse.json({
-      messages: finalMessages.map((message) => {
-        return message;
-      }),
+      messages: finalMessages.filter((message) => message.role !== "system"),
+      conversationId: conversationId,
     });
   } catch (error: any) {
     console.error("Error in AI completion:", error);
