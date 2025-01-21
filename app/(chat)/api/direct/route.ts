@@ -1,4 +1,5 @@
 import { openai } from "@/lib/ai/openai";
+import { flightSearchPrompt } from "@/lib/ai/prompts";
 import { bookingClient } from "@/lib/booking.com/api";
 import { mail } from "@/lib/resend/mail";
 import { getMostRecentUserMessageCustom } from "@/lib/utils";
@@ -250,7 +251,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    let finalMessages = [...messages] as CustomMessage[];
+    const finalMessages = [
+      ...messages.filter((message) => message.role !== "system"),
+    ] as CustomMessage[];
+
+    finalMessages.unshift({
+      role: "system",
+      content: flightSearchPrompt,
+    });
 
     let result = await openai.chat.completions.create({
       messages: finalMessages as unknown as ChatCompletionMessageParam[],
@@ -275,9 +283,12 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("Error in AI completion:", error);
-    return NextResponse.json({
-      error: error?.error ?? error?.message ?? "Something went wrong", 
-    },{ status: 500 });
+    return NextResponse.json(
+      {
+        error: error?.error ?? error?.message ?? "Something went wrong",
+      },
+      { status: 500 }
+    );
   }
 }
 
