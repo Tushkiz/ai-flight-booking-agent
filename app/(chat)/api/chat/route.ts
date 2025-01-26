@@ -124,7 +124,7 @@ export async function POST(request: Request) {
           searchFlights: {
             description: "Search for flights between airports",
             parameters: z.object({
-              type: z.enum(["ONEWAY", "ROUND"]),
+              type: z.enum(["ONEWAY", "ROUNDTRIP", "MULTISTOP"]),
               adults: z.number(),
               cabinClass: z.enum([
                 "ECONOMY",

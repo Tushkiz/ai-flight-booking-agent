@@ -47,7 +47,7 @@ const tools = [
         properties: {
           type: {
             type: "string",
-            enum: ["ONEWAY", "ROUND"],
+            enum: ["ONEWAY", "ROUNDTRIP","MULTISTOP"],
             description: "The type of trip",
           },
           adults: {
