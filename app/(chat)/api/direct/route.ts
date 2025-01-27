@@ -271,7 +271,7 @@ export async function POST(request: Request) {
 
     if (cache) {
       // Parse the cached conversation
-      const conversation = cache as unknown as Message[];
+      const conversation = (cache as unknown as { messages: Message[] })?.messages ?? [];
 
       // Merge cached messages with current messages
       messages = [...conversation, ...messages];
@@ -310,12 +310,15 @@ export async function POST(request: Request) {
       });
     }
 
-    await redis.set(conversationId, JSON.stringify(finalMessages));
+    await redis.set(
+      conversationId,
+      JSON.stringify({ messages: finalMessages, tokens })
+    );
 
     return NextResponse.json({
       messages: [finalMessages[finalMessages.length - 1]],
       conversationId: conversationId,
-      tokens
+      tokens,
     });
   } catch (error: any) {
     console.error("Error in AI completion:", error);
