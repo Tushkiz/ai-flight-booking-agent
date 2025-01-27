@@ -13,6 +13,7 @@ import {
 } from "openai/resources/index.mjs";
 
 import { CompletionRequest, Maxim, MaximLogger } from "@maximai/maxim-js";
+import { maxim } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -229,11 +230,6 @@ interface ToolResult<T = any> {
   args: any;
   id: string;
 }
-
-const maxim = new Maxim({
-  baseUrl: process.env.LOGGING_BASE_URL!,
-  apiKey: process.env.MAXIM_API_KEY!,
-});
 
 export async function POST(request: Request) {
   const token = request.headers.get("x-maxim-token");
