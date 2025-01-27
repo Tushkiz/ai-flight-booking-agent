@@ -6,7 +6,6 @@ export const openai = new OpenAI({
 
 export const azureOpenAI = new AzureOpenAI({
   apiKey: process.env.AZURE_OPENAI_API_KEY,
-  apiVersion: "2023-05-15",
   deployment: process.env.AZURE_OPENAI_DEPLOYMENT_NAME as string,
   endpoint: process.env.AZURE_OPENAI_ENDPOINT,
 });
