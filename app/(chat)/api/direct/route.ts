@@ -1,6 +1,6 @@
 import { azureOpenAI } from "@/lib/ai/openai";
 import { flightSearchPrompt } from "@/lib/ai/prompts";
-import { bookingClient } from "@/lib/booking.com/api";
+import { bookingClient } from "@/lib/booking.com/mini-api";
 import redis from "@/lib/redis";
 import { mail } from "@/lib/resend/mail";
 import { generateUUID, getMostRecentUserMessageCustom } from "@/lib/utils";

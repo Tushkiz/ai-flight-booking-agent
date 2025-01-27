@@ -91,10 +91,18 @@ class BookingAPIClient {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json() as BookingComFlightsList;
-    
+    const result = (await response.json()) as BookingComFlightsList;
 
-    return result;
+    return {
+      flightOffers: result.flightOffers.map((f) => ({
+        token: f.token,
+        tripType: f.tripType,
+        brandedFareInfo: f.brandedFareInfo,
+        segments: f.segments,
+        badges: f.badges,
+      })) as any,
+      searchCriteria: result.searchCriteria,
+    } as any;
   }
 
   async getFlightDetails(
