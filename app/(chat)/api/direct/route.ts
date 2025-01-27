@@ -1,4 +1,4 @@
-import { azureOpenAI, openai } from "@/lib/ai/openai";
+import { azureOpenAI } from "@/lib/ai/openai";
 import { flightSearchPrompt } from "@/lib/ai/prompts";
 import { bookingClient } from "@/lib/booking.com/api";
 import redis from "@/lib/redis";
@@ -410,7 +410,7 @@ async function toolCallChain(
     });
   });
 
-  const response = await openai.chat.completions.create({
+  const response = await azureOpenAI.chat.completions.create({
     messages: messages as unknown as ChatCompletionMessageParam[],
     max_tokens: 5000,
     model: modelId,
