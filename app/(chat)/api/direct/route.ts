@@ -1,6 +1,6 @@
 import { azureOpenAI } from "@/lib/ai/openai";
 import { flightSearchPrompt } from "@/lib/ai/prompts";
-import { bookingClient } from "@/lib/booking.com/api";
+import { bookingClient } from "@/lib/booking.com/mini-api";
 import redis from "@/lib/redis";
 import { mail } from "@/lib/resend/mail";
 import { generateUUID, getMostRecentUserMessageCustom } from "@/lib/utils";
@@ -230,6 +230,12 @@ interface ToolResult<T = any> {
   id: string;
 }
 
+type Tokens = {
+  completion_tokens: number;
+  prompt_tokens: number;
+  total_tokens: number;
+};
+
 export async function POST(request: Request) {
   const token = request.headers.get("x-maxim-token");
 
@@ -293,6 +299,12 @@ export async function POST(request: Request) {
   if (logger) {
     logger.traceInput(traceId, userMessage.content)
   }
+  
+  let tokens: Tokens = {
+    completion_tokens: 0,
+    prompt_tokens: 0,
+    total_tokens: 0,
+  };
 
   try {
     // Attempt to retrieve cached conversation from Redis
@@ -300,7 +312,7 @@ export async function POST(request: Request) {
 
     if (cache) {
       // Parse the cached conversation
-      const conversation = cache as unknown as Message[];
+      const conversation = (cache as unknown as { messages: Message[] })?.messages ?? [];
 
       // Merge cached messages with current messages
       messages = [...conversation, ...messages];
@@ -342,6 +354,15 @@ export async function POST(request: Request) {
 
     if (result.choices[0].finish_reason === "tool_calls") {
       await toolCallChain(result, finalMessages, modelId, logger, spanId);
+
+    if (result.usage) {
+      tokens.completion_tokens = result.usage.completion_tokens;
+      tokens.prompt_tokens = result.usage.prompt_tokens;
+      tokens.total_tokens = result.usage.total_tokens;
+    }
+
+    if (result.choices[0].finish_reason === "tool_calls") {
+      await toolCallChain(result, finalMessages, modelId, tokens);
     } else {
       finalMessages.push({
         role: "assistant",
@@ -353,13 +374,17 @@ export async function POST(request: Request) {
       logger.traceOutput(traceId, result.choices[0].message.content as string)
     }
 
-    await redis.set(conversationId, JSON.stringify(finalMessages));
+    await redis.set(
+      conversationId,
+      JSON.stringify({ messages: finalMessages, tokens })
+    );
 
     await logger?.cleanup();
 
     return NextResponse.json({
       messages: [finalMessages[finalMessages.length - 1]],
       conversationId: conversationId,
+      tokens,
     });
   } catch (error: any) {
     console.error("Error in AI completion:", error);
@@ -457,6 +482,7 @@ async function toolCallChain(
   modelId: string,
   logger: MaximLogger | undefined,
   spanId: string
+  tokens: Tokens
 ) {
   const toolCalls = result.choices[0].message["tool_calls"];
 
@@ -525,12 +551,18 @@ async function toolCallChain(
     tools: tools as any,
   });
 
+
   if (logger) {
     logger.generationResult(generationId, response as any);
   }
 
+ 
+  tokens.completion_tokens += response.usage?.completion_tokens ?? 0;
+  tokens.prompt_tokens += response.usage?.prompt_tokens ?? 0;
+  tokens.total_tokens += response.usage?.total_tokens ?? 0;
+
   if (response.choices[0].finish_reason === "tool_calls") {
-    await toolCallChain(response, messages, modelId, logger, nextSpanId);
+    await toolCallChain(response, messages, modelId, tokens);
   } else {
     messages.push({
       role: "assistant",
