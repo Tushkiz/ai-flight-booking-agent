@@ -315,8 +315,6 @@ export async function POST(request: Request) {
       content: flightSearchPrompt,
     });
 
-    console.dir(finalMessages, { depth: null });
-
     const generationId = generateUUID();
 
     if (logger) {
@@ -479,7 +477,7 @@ async function toolCallChain(
     if (toolCallResult.result.error) {
       logger.toolCallError(toolCallResult.id, toolCallResult.result.error)
     } else {
-      logger.toolCallResult(toolCallResult.id, toolCallResult.result)
+      logger.toolCallResult(toolCallResult.id, JSON.stringify(toolCallResult.result))
     }
   });
 
@@ -526,7 +524,7 @@ async function toolCallChain(
   });
 
   if (logger) {
-    logger.generationResult(nextSpanId, response as any);
+    logger.generationResult(generationId, response as any);
   }
 
   if (response.choices[0].finish_reason === "tool_calls") {
