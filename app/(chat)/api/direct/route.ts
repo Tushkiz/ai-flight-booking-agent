@@ -12,6 +12,8 @@ import {
   ChatCompletionMessageToolCall,
 } from "openai/resources/index.mjs";
 
+import { CompletionRequest, Maxim, MaximLogger } from "@maximai/maxim-js";
+
 export const maxDuration = 60;
 
 type AllowedTools =
@@ -47,7 +49,7 @@ const tools = [
         properties: {
           type: {
             type: "string",
-            enum: ["ONEWAY", "ROUNDTRIP","MULTISTOP"],
+            enum: ["ONEWAY", "ROUNDTRIP", "MULTISTOP"],
             description: "The type of trip",
           },
           adults: {
@@ -228,6 +230,11 @@ interface ToolResult<T = any> {
   id: string;
 }
 
+const maxim = new Maxim({
+  baseUrl: process.env.LOGGING_BASE_URL!,
+  apiKey: process.env.MAXIM_API_KEY!,
+});
+
 export async function POST(request: Request) {
   const token = request.headers.get("x-maxim-token");
 
@@ -247,10 +254,44 @@ export async function POST(request: Request) {
 
   const conversationId = id ?? generateUUID();
 
+  const logger = await maxim.logger({
+    id: process.env.MAXIM_REPO_ID!,
+  });
+
+  if (!logger) {
+    console.log("Failed to init Maxim logger");
+  }
+
+  // create session
+  const session = logger?.session({
+    id: conversationId,
+  });
+
+  const traceId = generateUUID();
+
+  logger?.trace({
+    id: traceId,
+    sessionId: session?.id,
+    name: "Flight Search",
+  });
+
+
+  const spanId = generateUUID();
+
+  if (logger) {
+    logger.traceSpan(traceId, {
+      id: spanId,
+    });
+  }
+
   const userMessage = getMostRecentUserMessageCustom(messages);
 
   if (!userMessage) {
     return new Response("No user message found", { status: 400 });
+  }
+
+  if (logger) {
+    logger.traceInput(traceId, userMessage.content)
   }
 
   try {
@@ -276,6 +317,20 @@ export async function POST(request: Request) {
 
     console.dir(finalMessages, { depth: null });
 
+    const generationId = generateUUID();
+
+    if (logger) {
+      logger.spanGeneration(spanId, {
+        id: generationId,
+        model: modelId,
+        provider: "openai",
+        messages: finalMessages as CompletionRequest[],
+        modelParameters: {
+          maxTokens: 5000
+        }
+      })
+    }
+
     let result = await openai.chat.completions.create({
       messages: finalMessages as unknown as ChatCompletionMessageParam[],
       max_tokens: 5000,
@@ -283,8 +338,12 @@ export async function POST(request: Request) {
       tools: tools as any,
     });
 
+    if (logger) {
+      logger.generationResult(generationId, result as any);
+    }
+
     if (result.choices[0].finish_reason === "tool_calls") {
-      await toolCallChain(result, finalMessages, modelId);
+      await toolCallChain(result, finalMessages, modelId, logger, spanId);
     } else {
       finalMessages.push({
         role: "assistant",
@@ -292,7 +351,13 @@ export async function POST(request: Request) {
       });
     }
 
+    if (logger) {
+      logger.traceOutput(traceId, result.choices[0].message.content as string)
+    }
+
     await redis.set(conversationId, JSON.stringify(finalMessages));
+
+    await logger?.cleanup();
 
     return NextResponse.json({
       messages: finalMessages.filter((message) => message.role !== "system"),
@@ -365,6 +430,7 @@ async function executeTools(
       console.error(`Error executing tool ${tool.function.name}:`, error);
       // Return a structured error result instead of null
       return {
+        id: tool.id,
         name: tool.function.name as AllowedTools,
         result: {
           error:
@@ -388,17 +454,40 @@ async function executeTools(
 async function toolCallChain(
   result: ChatCompletion,
   messages: CustomMessage[],
-  modelId: string
+  modelId: string,
+  logger: MaximLogger | undefined,
+  spanId: string
 ) {
-  const toolsCalls = result.choices[0].message["tool_calls"];
+  const toolCalls = result.choices[0].message["tool_calls"];
 
-  const toolCallResults = await executeTools(toolsCalls);
+  if (logger) {
+    toolCalls?.map(toolCall => {
+      logger.spanToolCall(spanId, {
+        id: toolCall.id,
+        name: toolCall.function.name,
+        description: toolCall.function.name,
+        args: toolCall.function.arguments
+      })
+    })
+  }
+
+  const toolCallResults = await executeTools(toolCalls);
+
+  toolCallResults.map(toolCallResult => {
+    if (!logger) return;
+
+    if (toolCallResult.result.error) {
+      logger.toolCallError(toolCallResult.id, toolCallResult.result.error)
+    } else {
+      logger.toolCallResult(toolCallResult.id, toolCallResult.result)
+    }
+  });
 
   if (toolCallResults.length) {
     messages.push({
       role: "assistant",
       content: "",
-      tool_calls: toolsCalls,
+      tool_calls: toolCalls,
     });
   }
 
@@ -410,6 +499,25 @@ async function toolCallChain(
     });
   });
 
+  const nextSpanId = generateUUID();
+  const generationId = generateUUID();
+
+  if (logger) {
+    logger.spanSpan(spanId, {
+      id: nextSpanId,
+    });
+
+    logger.spanGeneration(nextSpanId, {
+      id: generationId,
+      model: modelId,
+      provider: "openai",
+      messages: messages as CompletionRequest[],
+      modelParameters: {
+        maxTokens: 5000
+      }
+    })
+  }
+
   const response = await openai.chat.completions.create({
     messages: messages as unknown as ChatCompletionMessageParam[],
     max_tokens: 5000,
@@ -417,8 +525,12 @@ async function toolCallChain(
     tools: tools as any,
   });
 
+  if (logger) {
+    logger.generationResult(nextSpanId, response as any);
+  }
+
   if (response.choices[0].finish_reason === "tool_calls") {
-    await toolCallChain(response, messages, modelId);
+    await toolCallChain(response, messages, modelId, logger, nextSpanId);
   } else {
     messages.push({
       role: "assistant",
