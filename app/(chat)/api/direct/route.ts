@@ -1,4 +1,4 @@
-import { openai } from "@/lib/ai/openai";
+import { azureOpenAI, openai } from "@/lib/ai/openai";
 import { flightSearchPrompt } from "@/lib/ai/prompts";
 import { bookingClient } from "@/lib/booking.com/api";
 import redis from "@/lib/redis";
@@ -276,7 +276,7 @@ export async function POST(request: Request) {
 
     console.dir(finalMessages, { depth: null });
 
-    let result = await openai.chat.completions.create({
+    let result = await azureOpenAI.chat.completions.create({
       messages: finalMessages as unknown as ChatCompletionMessageParam[],
       max_tokens: 5000,
       model: modelId,
