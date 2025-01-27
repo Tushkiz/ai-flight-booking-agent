@@ -47,7 +47,7 @@ const tools = [
         properties: {
           type: {
             type: "string",
-            enum: ["ONEWAY", "ROUNDTRIP","MULTISTOP"],
+            enum: ["ONEWAY", "ROUNDTRIP", "MULTISTOP"],
             description: "The type of trip",
           },
           adults: {
@@ -228,6 +228,12 @@ interface ToolResult<T = any> {
   id: string;
 }
 
+type Tokens = {
+  completion_tokens: number;
+  prompt_tokens: number;
+  total_tokens: number;
+};
+
 export async function POST(request: Request) {
   const token = request.headers.get("x-maxim-token");
 
@@ -252,6 +258,12 @@ export async function POST(request: Request) {
   if (!userMessage) {
     return new Response("No user message found", { status: 400 });
   }
+
+  let tokens: Tokens = {
+    completion_tokens: 0,
+    prompt_tokens: 0,
+    total_tokens: 0,
+  };
 
   try {
     // Attempt to retrieve cached conversation from Redis
@@ -283,8 +295,14 @@ export async function POST(request: Request) {
       tools: tools as any,
     });
 
+    if (result.usage) {
+      tokens.completion_tokens = result.usage.completion_tokens;
+      tokens.prompt_tokens = result.usage.prompt_tokens;
+      tokens.total_tokens = result.usage.total_tokens;
+    }
+
     if (result.choices[0].finish_reason === "tool_calls") {
-      await toolCallChain(result, finalMessages, modelId);
+      await toolCallChain(result, finalMessages, modelId, tokens);
     } else {
       finalMessages.push({
         role: "assistant",
@@ -297,6 +315,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       messages: [finalMessages[finalMessages.length - 1]],
       conversationId: conversationId,
+      tokens
     });
   } catch (error: any) {
     console.error("Error in AI completion:", error);
@@ -388,7 +407,8 @@ async function executeTools(
 async function toolCallChain(
   result: ChatCompletion,
   messages: CustomMessage[],
-  modelId: string
+  modelId: string,
+  tokens: Tokens
 ) {
   const toolsCalls = result.choices[0].message["tool_calls"];
 
@@ -417,8 +437,12 @@ async function toolCallChain(
     tools: tools as any,
   });
 
+  tokens.completion_tokens += response.usage?.completion_tokens ?? 0;
+  tokens.prompt_tokens += response.usage?.prompt_tokens ?? 0;
+  tokens.total_tokens += response.usage?.total_tokens ?? 0;
+
   if (response.choices[0].finish_reason === "tool_calls") {
-    await toolCallChain(response, messages, modelId);
+    await toolCallChain(response, messages, modelId, tokens);
   } else {
     messages.push({
       role: "assistant",
