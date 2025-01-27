@@ -70,6 +70,8 @@ class BookingAPIClient {
       depart: params.depart,
       sort: params.sort,
       enableVI: params.enableVI?.toString() ?? '',
+      limit: "5",
+      enableVI: params.enableVI.toString(),
       ...(params.return && { return: params.return }),
       ...(params.stops !== undefined && { stops: params.stops?.toString() ?? '' }),
       ...(params.depTimeInt && { depTimeInt: params.depTimeInt }),
@@ -77,6 +79,8 @@ class BookingAPIClient {
       ...(params.duration !== undefined && { duration: params.duration?.toString() ?? '' }),
       ...(params.page !== undefined && { page: params.page?.toString() ?? '' }),
       ...(params.limit !== undefined && { limit: params.limit?.toString() ?? '' }),
+      ...(params.duration && { duration: params.duration.toString() }),
+      ...(params.page !== undefined && { page: params.page.toString() }),
     });
 
     const response = await fetch(
