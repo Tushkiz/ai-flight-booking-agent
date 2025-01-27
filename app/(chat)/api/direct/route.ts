@@ -13,7 +13,6 @@ import {
 } from "openai/resources/index.mjs";
 
 import { CompletionRequest, Maxim, MaximLogger } from "@maximai/maxim-js";
-import { maxim } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -250,6 +249,11 @@ export async function POST(request: Request) {
 
   const conversationId = id ?? generateUUID();
 
+  const maxim = new Maxim({
+    baseUrl: process.env.LOGGING_BASE_URL!,
+    apiKey: process.env.MAXIM_API_KEY!,
+  });
+
   const logger = await maxim.logger({
     id: process.env.MAXIM_REPO_ID!,
   });
@@ -365,6 +369,8 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  } finally {
+    await maxim.cleanup();
   }
 }
 
