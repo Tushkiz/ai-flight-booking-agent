@@ -295,7 +295,7 @@ export async function POST(request: Request) {
     await redis.set(conversationId, JSON.stringify(finalMessages));
 
     return NextResponse.json({
-      messages: finalMessages.filter((message) => message.role !== "system"),
+      messages: [finalMessages[finalMessages.length - 1]],
       conversationId: conversationId,
     });
   } catch (error: any) {
